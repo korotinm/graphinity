@@ -110,23 +110,6 @@ def compilerOptions(scalaVersion: String, optimize: Boolean) = {
 
 lazy val commonSettings = Seq(
   scalacOptions := compilerOptions(scalaVersion.value, !isSnapshotVersion(version.value)),
-  /* scalacOptions := Seq(
-    "UTF-8",
-    "-encoding",
-    "-Xfatal-warnings",
-    "-feature",
-    "-language:higherKinds",
-    "-language:implicitConversions",
-    "-language:postfixOps",
-    "-unchecked",
-    "-deprecation"
-  ),
-  scalacOptions ++= (
-    CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, v)) if v <= 12 => Seq("-Ypartial-unification")
-      case _                       => Seq.empty
-    }
-  ), */
   resolvers ++= Seq(
     Resolver.sonatypeRepo("releases"),
     Resolver.sonatypeRepo("snapshots")

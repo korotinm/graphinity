@@ -63,7 +63,7 @@ class VertexModuleLive(allVertexRef: Ref[Set[VertexClass]], allReadyRef: Ref[Boo
     }
 
   override def addVertexCl(vertCl: VertexClass): UIO[Unit] =
-    allVertexRef.update(allVertex => allVertex + vertCl).map(_ => ())
+    allVertexRef.update(allVertex => allVertex + vertCl).unit
 
   /* private def cleanAllVertexCl: Unit =
     setFinalStaticField(mkField[VertexModuleLive]("allVertexRef"), null) */

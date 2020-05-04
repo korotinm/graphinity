@@ -11,9 +11,9 @@ import graphinity.example.clients.CClient
 import graphinity.example.clients.BClient
 import graphinity.example.clients.AClient
 import graphinity.example.clients.DClient
+import zio.duration._
 
 object Example extends GraphinityRuntime {
-  import zio.duration._
 
   def run(args: List[String]): ZIO[GraphinityEnv, Nothing, Int] =
     (for {
@@ -27,40 +27,18 @@ object Example extends GraphinityRuntime {
 
       //1) registration all of instances for give ability to readiness check
       clients <- Task.succeed(List(dClient, cClient, bClient, aClient))
-      _ <- ZIO.collectAll(clients.map(v => addVertexCl(v)))
+      _ <- ZIO.collectAll(clients.map(v => addVertex(v)))
 
       //2) the beginning of each instance initialization
       initFiber <- ZIO.collectAllPar(clients.map(_.startInit)).fork
 
       //!!!]
 
-      //monitoring while one of clients is not ready
-      isReadyMonitoring <- ZIO
-        .collectAll(clients.map(v => v.isReady.map(b => (v, b))))
-        .map { v =>
-          val lines = v.map {
-            case (inst, status) =>
-              s"$status     $inst\n"
-          }.mkString
+      //monitoring #1
+      isReadyMonitoring <- whileOneOfClientsNotReady(clients).fork
 
-          println(
-            s"""STATUS    INSTANCE
-            |$lines
-            |""".stripMargin
-          )
-
-          v
-        }
-        .repeat(
-          (Schedule.spaced(1300 milliseconds) <*
-            Schedule.recurs(40)).untilInput(v => v.forall(_._2 == true))
-        )
-        .fork
-
-      //monitoring until all of clients are ready
-      allReadyMonitoring <- allReady
-        .repeat(Schedule.spaced(50 milliseconds).untilInput(_ == true))
-        .fork
+      //monitoring #2
+      allReadyMonitoring <- untilAllOfClientsAreReady.fork
 
       _ <- initFiber.join
       _ <- allReadyMonitoring.join
@@ -84,4 +62,37 @@ object Example extends GraphinityRuntime {
       )
     )
     catch { case _: SecurityException => }
+
+  //monitoring while one of clients is not ready
+  private def whileOneOfClientsNotReady(clients: List[Vertex]) =
+    ZIO
+      .collectAll(clients.map(v => v.isReady.map(b => (v, b))))
+      .map { v =>
+        val lines = v.map {
+          case (inst, status) =>
+            s"$status     $inst\n"
+        }.mkString
+
+        println(
+          s"""STATUS    INSTANCE
+            |$lines
+            |""".stripMargin
+        )
+
+        v
+      }
+      .repeat(
+        (Schedule.spaced(1300 milliseconds) <*
+          Schedule.recurs(40)).untilInput(v => v.forall(_._2 == true))
+      )
+
+  //monitoring until all of clients are ready
+  private def untilAllOfClientsAreReady =
+    allReady
+      .repeat(Schedule.spaced(10 milliseconds).untilInput(_ == true))
+      .flatMap(
+        attempts =>
+          /*your action*/
+          putStrLn(s"\nAll of clients are ready! [NUMBER OF CHECK: $attempts]\n")
+      )
 }

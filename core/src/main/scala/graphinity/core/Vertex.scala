@@ -9,6 +9,12 @@ import zio.Schedule
 import scala.concurrent.duration._
 import graphinity.core._
 
+/**
+ * {{{
+ * Type for legacy code.
+ * Not supported IO result for almost all methods
+ * }}}
+ */
 trait Vertex { self =>
 
   val vertexCl: VertexClass = self.getClass
@@ -47,7 +53,7 @@ trait Vertex { self =>
 
   /**
    * {{{
-   * @return Either[InitVertexErr, OfVertex] - 
+   * @return Either[InitVertexErr, OfVertex] -
    * returning either success result(instance of Vertex subtype)
    * or error if initialisation cannot been completed
    * }}}
