@@ -1,30 +1,37 @@
 package graphinity.example.runtime
 
+import graphinity.core.Graphinity
+import graphinity.core.GraphinityEnv
+import graphinity.core.GraphinityLive
+import graphinity.core.GraphinityLive.GraphinityState
+import graphinity.core.GraphinityLive.VertexState
+import graphinity.core.VertexCTag
+import graphinity.core.VertexClass
+import zio.Has
 import zio.Runtime
 import zio.clock.Clock
 import zio.console.Console
-import graphinity.core.GraphinityEnv
 import zio.internal.Platform
-import zio.internal.PlatformLive
-import graphinity.core.GraphinityLive.GraphinityState
-import graphinity.core.GraphinityLive.VertexState
-import graphinity.core.Graphinity
-import graphinity.core.VertexModule
-import graphinity.core.GraphinityLive
-import graphinity.core.VertexModuleLive
-import graphinity.core.VertexClass
-import graphinity.core.VertexCTag
 
-trait GraphinityRuntime extends Runtime[GraphinityEnv] { self =>
+trait GraphinityRuntime extends Runtime[GraphinityEnv] {
+  self =>
 
-  override val environment: GraphinityEnv = new Clock.Live with Console.Live with Graphinity.Live
-  with VertexModule.Live {
+  override val platform: Platform = Platform.default
 
-    override lazy val graphinity: Graphinity.Service =
-      unsafeRun(GraphinityLive.make(zio.Ref.make(GraphinityState(meta = Map.empty[VertexCTag, VertexState]))))
+  val graphinityImpl: Graphinity.Live =
+    new Graphinity.Live {
+      override def graphinity: Graphinity.Service =
+        unsafeRun(
+          GraphinityLive.make(zio.Ref.make(GraphinityState(meta = Map.empty[VertexCTag, VertexState])),
+                              zio.Ref.make(Set.empty[VertexClass])))
+    }
 
-    override lazy val vertexModule: VertexModule.Service =
-      unsafeRun(VertexModuleLive.make(zio.Ref.make(Set.empty[VertexClass]), zio.Ref.make(false)))
-  }
-  override val platform: Platform = PlatformLive.Default
+  val has: Has[Console.Service] with Has[Clock.Service] with Has[Graphinity.Service] =
+    Has.allOf[Console.Service, Clock.Service, Graphinity.Service](
+      Console.Service.live,
+      Clock.Service.live,
+      graphinityImpl.graphinity
+    )
+
+  override val environment: GraphinityEnv = has
 }

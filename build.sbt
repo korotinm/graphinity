@@ -3,7 +3,7 @@ import sbtcrossproject.CrossPlugin.autoImport.CrossType
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
-val devZioV: String = "1.0.0-RC17"
+val devZioV: String = "1.0.0-RC18-2"
 
 lazy val buildSettings = Seq(
   organization := "org.me",

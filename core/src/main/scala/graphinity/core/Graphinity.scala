@@ -1,66 +1,40 @@
 package graphinity.core
 
-import zio.UIO
-import zio.IO
-import zio.Task
-import zio.Ref
-import graphinity.core.GraphinityLive.GraphinityState.VertexMetaState
+import graphinity.core.Graphinity.Graphinity
+import graphinity.core.Graphinity.VertexMeta
 import graphinity.core.GraphinityLive.GraphinityState
-
-trait Graphinity {
-  def graphinity: Graphinity.Service
-}
+import graphinity.core.GraphinityLive.GraphinityState.VertexMetaState
+import zio.Has
+import zio.IO
+import zio.Ref
+import zio.Task
+import zio.UIO
+import zio.ZIO
 
 object Graphinity {
 
-  trait Service {
-    def registerVertex(vertexMeta: VertexMeta): IO[GraphinityError, Unit]
+  type Graphinity = Has[Service]
 
+  trait Service extends Serializable {
     def makeAsReady(vertexCl: VertexClass): IO[GraphinityError, Boolean]
-
-    def getIfReady(vertexCl: VertexClass): UIO[VertexHK[Option]]
-
-    /**
-     * If vertClasses is empty then false or checking each of the elements
-     *
-     * @param vertClasses check all of these classes if they are ready to use
-     * @return zio.UIO[Boolean] all of elements in non empty input argument are ready to use
-     */
-    def areAllReady(vertClasses: Set[VertexClass]): UIO[Boolean]
-
-    def cleanAllStates: UIO[Unit]
+    def isReady(vertClass: VertexClass): UIO[Boolean]
+    def allReady: UIO[Boolean]
+    def addVertexCl(vertCl: VertexClass): UIO[Unit]
+    def regProcess(vertexMeta: (VertexClass, VertexHK[Option])): ZIO[Graphinity, GraphinityError, Unit]
   }
 
   final case class VertexMeta(vertexCl: VertexClass, mbVertex: VertexHK[Option])
 
-  trait GraphinityDefault extends Graphinity {
-    override def graphinity: Service
+  trait GraphinityDefault {
+    def graphinity: Graphinity.Service
   }
 
   trait Live extends GraphinityDefault
 }
 
-class GraphinityLive(stateRef: Ref[GraphinityState]) extends Graphinity.Service {
+class GraphinityLive(val stateRef: Ref[GraphinityState], allVertexRef: Ref[Set[VertexClass]])
+    extends Graphinity.Service {
   import GraphinityLive._
-
-  override def registerVertex(vertexMeta: Graphinity.VertexMeta): IO[GraphinityError, Unit] = {
-    @inline def processStatus(status: StateStatus): IO[GraphinityError, Unit] = status match {
-      case Modified(_) => IO.unit
-      case err @ (InstanceExists(_) | InstanceNonDefined(_) | RefersToItself(_)) =>
-        IO.fail(FatalError(err.message, new RuntimeException(err.message)))
-      case unknown => IO.fail(FatalError(unknown.message))
-    }
-
-    for {
-      metaState <- IO.succeed(VertexMetaState(vertexMeta))
-      status <- stateRef
-        .modify(_.register(metaState) match {
-          case StateResult(status, state) => (status, state)
-        })
-
-      res <- processStatus(status)
-    } yield res
-  }
 
   override def makeAsReady(vertexCl: VertexClass): IO[GraphinityError, Boolean] = {
     @inline def processStatus(status: StateStatus): IO[GraphinityError, Boolean] = status match {
@@ -80,7 +54,44 @@ class GraphinityLive(stateRef: Ref[GraphinityState]) extends Graphinity.Service 
     } yield res
   }
 
-  override def getIfReady(vertexCl: VertexClass): UIO[VertexHK[Option]] =
+  override def addVertexCl(vertCl: VertexClass): UIO[Unit] =
+    allVertexRef.update(allVertex => allVertex + vertCl).unit
+
+  override def isReady(vertClass: VertexClass): UIO[Boolean] =
+    getIfReady(vertClass).map(_.isDefined)
+
+  override def allReady: UIO[Boolean] =
+    for {
+      allVertex <- allVertexRef.get
+      res <- areAllReady(allVertex)
+    } yield res
+
+  override def regProcess(vertexMeta: (VertexClass, VertexHK[Option])): ZIO[Graphinity, GraphinityError, Unit] =
+    vertexMeta match {
+      case (vertCl: VertexClass, mbVertex: VertexHK[Option]) =>
+        registerVertex(VertexMeta(vertCl, mbVertex))
+    }
+
+  private def registerVertex(vertexMeta: Graphinity.VertexMeta): IO[GraphinityError, Unit] = {
+    @inline def processStatus(status: StateStatus): IO[GraphinityError, Unit] = status match {
+      case Modified(_) => IO.unit
+      case err @ (InstanceExists(_) | InstanceNonDefined(_) | RefersToItself(_)) =>
+        IO.fail(FatalError(err.message, new RuntimeException(err.message)))
+      case unknown => IO.fail(FatalError(unknown.message))
+    }
+
+    for {
+      metaState <- IO.succeed(VertexMetaState(vertexMeta))
+      status <- stateRef
+        .modify(_.register(metaState) match {
+          case StateResult(status, state) => (status, state)
+        })
+
+      res <- processStatus(status)
+    } yield res
+  }
+
+  private def getIfReady(vertexCl: VertexClass): UIO[VertexHK[Option]] =
     for {
       gstate <- stateRef.get
       vertexCTag <- Task.succeed[VertexCTag](toCTag(vertexCl))
@@ -90,37 +101,36 @@ class GraphinityLive(stateRef: Ref[GraphinityState]) extends Graphinity.Service 
         .map(_.instance)
     } yield res
 
-  override def areAllReady(vertClasses: Set[VertexClass]): UIO[Boolean] =
+  /**
+   * If vertClasses is empty then false or checking each of the elements
+   *
+   * @param vertClasses check all of these classes if they are ready to use
+   * @return zio.UIO[Boolean] all of elements in non empty input argument are ready to use
+   */
+  private def areAllReady(vertClasses: Set[VertexClass]): UIO[Boolean] =
     vertClasses.toList match {
       case Nil => IO.succeed(false)
       case _ =>
         for {
           gstate <- stateRef.get
-          vertCTags = vertClasses.map(toCTag(_))
-          foundVertCTags = gstate.meta.keySet.filter(vertCTags.contains(_))
+          vertCTags = vertClasses.map(toCTag)
+          foundVertCTags = gstate.meta.keySet.intersect(vertCTags)
           res = if (vertCTags.size != foundVertCTags.size) false
           else gstate.meta.filter { case (vertCTag, _) => vertCTags.contains(vertCTag) }.values.forall(_.isReady)
         } yield res
     }
-
-  override def cleanAllStates: UIO[Unit] = IO.effectTotal {
-    val f = mkField[GraphinityLive]("stateRef")
-    setFinalStaticField(this, f, null)
-  }
 }
 
 object GraphinityLive {
   import graphinity.core.Graphinity.VertexMeta
 
-  def make(stateRef: UIO[Ref[GraphinityState]]): UIO[GraphinityLive] =
+  def make(stateRef: UIO[Ref[GraphinityState]], allVertexRef: UIO[Ref[Set[VertexClass]]]): UIO[GraphinityLive] =
     for {
       sr <- stateRef
-    } yield new GraphinityLive(sr)
+      avr <- allVertexRef
+    } yield new GraphinityLive(sr, avr)
 
-  final case class VertexState(
-      instance: OfVertex,
-      relations: Set[VertexCTag],
-      isReady: Boolean) { self =>
+  final case class VertexState(instance: OfVertex, relations: Set[VertexCTag], isReady: Boolean) { self =>
 
     def makeReadiness: VertexState =
       self.copy(isReady = true)
@@ -181,7 +191,7 @@ object GraphinityLive {
           StateResult(status = InstanceNonDefined(vertexMeta.vertexCt), state = self)
       }
 
-    @inline private final def add(vCt: VertexCTag, vInst: OfVertex): GraphinityState =
+    @inline private def add(vCt: VertexCTag, vInst: OfVertex): GraphinityState =
       self.copy(
         meta = self.meta + (vCt -> VertexState(instance = vInst,
                                                relations = vInst.relatesWith.map(cl => toCTag(cl)).toSet,
@@ -191,10 +201,7 @@ object GraphinityLive {
 
   object GraphinityState {
 
-    final case class VertexMetaState(
-        vertexCt: VertexCTag,
-        vertexCl: VertexClass,
-        mbVertex: VertexHK[Option])
+    final case class VertexMetaState(vertexCt: VertexCTag, vertexCl: VertexClass, mbVertex: VertexHK[Option])
 
     object VertexMetaState {
 
