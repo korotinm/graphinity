@@ -1,16 +1,16 @@
 package graphinity.example
 
-import zio.ZIO
-import zio.Task
-import zio.IO
-import zio.console._
-import zio.Schedule
 import graphinity.core._
-import graphinity.example.runtime.GraphinityRuntime
-import graphinity.example.clients.CClient
-import graphinity.example.clients.BClient
 import graphinity.example.clients.AClient
+import graphinity.example.clients.BClient
+import graphinity.example.clients.CClient
 import graphinity.example.clients.DClient
+import graphinity.example.runtime.GraphinityRuntime
+import zio.IO
+import zio.Schedule
+import zio.Task
+import zio.ZIO
+import zio.console._
 import zio.duration._
 
 object Example extends GraphinityRuntime {
@@ -27,10 +27,10 @@ object Example extends GraphinityRuntime {
 
       //1) registration all of instances for give ability to readiness check
       clients <- Task.succeed(List(dClient, cClient, bClient, aClient))
-      _ <- ZIO.collectAll(clients.map(v => addVertex(v)))
+      _ <- ZIO.foreach(clients)(v => addVertex(v))
 
       //2) the beginning of each instance initialization
-      initFiber <- ZIO.collectAllPar(clients.map(_.startInit)).fork
+      initFiber <- ZIO.foreachPar(clients)(_.startInit).fork
 
       //!!!]
 
@@ -44,6 +44,7 @@ object Example extends GraphinityRuntime {
       _ <- allReadyMonitoring.join
       _ <- isReadyMonitoring.join
     } yield ())
+      .provide(environment)
       .foldCause(_ => 1, _ => 0)
 
   def main(args: Array[String]): Unit =
@@ -66,7 +67,7 @@ object Example extends GraphinityRuntime {
   //monitoring while one of clients is not ready
   private def whileOneOfClientsNotReady(clients: List[Vertex]) =
     ZIO
-      .collectAll(clients.map(v => v.isReady.map(b => (v, b))))
+      .foreach(clients)(v => v.isReady.map(b => (v, b)))
       .map { v =>
         val lines = v.map {
           case (inst, status) =>

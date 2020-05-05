@@ -2,6 +2,10 @@
 
 ![graphinity](/img/example.png)
 
+## Run application
+
+`sbt exampleJVM/run`
+
 ## Description
 
 There is starting process of initialization during in deploying microservice.</br>

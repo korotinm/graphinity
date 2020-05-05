@@ -1,13 +1,13 @@
 package graphinity.core
 
-import scala.concurrent.duration.FiniteDuration
+import zio.IO
+import zio.Schedule
 import zio.URIO
 import zio.ZIO
 import zio.ZManaged
-import zio.IO
-import zio.Schedule
+
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration._
-import graphinity.core._
 
 /**
  * {{{

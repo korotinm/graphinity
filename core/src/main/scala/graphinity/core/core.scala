@@ -1,14 +1,13 @@
 package graphinity
 
-import java.lang.reflect.Modifier
-import java.lang.reflect.Field
-import zio.duration.Duration
-import scala.concurrent.duration.FiniteDuration
+import graphinity.core.Graphinity.Graphinity
 import zio.ZIO
 import zio.clock.Clock
 import zio.console.Console
+import zio.duration.Duration
+
+import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
-import scala.reflect.classTag
 
 package object core {
   type OfVertex = Vertex
@@ -16,68 +15,36 @@ package object core {
   type VertexCTag = ClassTag[_ <: OfVertex]
   type VertexHK[F[_]] = F[OfVertex]
 
-  type GraphinityEnv = Clock with Console with Graphinity with VertexModule
+  type GraphinityEnv = Clock with Console with Graphinity /* with VertexModule*/
 
   /**
-    * Add subtype of Vertex for further control
-    *
-    * @param vertex
-    * @return
-    */
-  final def addVertex(vertex: Vertex): ZIO[GraphinityEnv, Nothing, Unit] =
-    ZIO.accessM(_.vertexModule.addVertexCl(vertex.vertexCl))
+   * Add subtype of Vertex for further control
+   *
+   * @param vertex
+   * @return
+   */
+  final def addVertex(vertex: Vertex): ZIO[Graphinity, Nothing, Unit] =
+    ZIO.accessM(_.get.addVertexCl(vertex.vertexCl))
 
   /**
    * @return true if all of clients and their links are ready
    */
-  final def allReady: ZIO[GraphinityEnv, Nothing, Boolean] =
-    ZIO.accessM(_.vertexModule.allReady)
+  final def allReady: ZIO[Graphinity, Nothing, Boolean] =
+    ZIO.accessM(_.get.allReady)
 
-  private[core] final def _isReady(vertClass: VertexClass): ZIO[GraphinityEnv, Nothing, Boolean] =
-    ZIO.accessM(_.vertexModule.isReady(vertClass))
+  private[core] final def _isReady(vertClass: VertexClass): ZIO[Graphinity, Nothing, Boolean] =
+    ZIO.accessM(_.get.isReady(vertClass))
 
   private[core] final def regProcess(
       vertexMeta: (VertexClass, VertexHK[Option])
-    ): ZIO[GraphinityEnv, GraphinityError, Unit] =
-    ZIO.accessM(_.vertexModule.regProcess(vertexMeta))
+  ): ZIO[Graphinity, GraphinityError, Unit] =
+    ZIO.accessM(_.get.regProcess(vertexMeta))
 
-  private[core] final def registerVertex(vertexMeta: Graphinity.VertexMeta): ZIO[GraphinityEnv, GraphinityError, Unit] =
-    ZIO.accessM(_.graphinity.registerVertex(vertexMeta))
-
-  private[core] final def makeAsReady(vertexCl: VertexClass): ZIO[GraphinityEnv, GraphinityError, Boolean] =
-    ZIO.accessM(_.graphinity.makeAsReady(vertexCl))
-
-  private[core] final def getIfReady(vertexCl: VertexClass): ZIO[GraphinityEnv, Nothing, VertexHK[Option]] =
-    ZIO.accessM(_.graphinity.getIfReady(vertexCl))
-
-  private[core] final def areAllReady(vertClasses: Set[VertexClass]): ZIO[GraphinityEnv, Nothing, Boolean] =
-    ZIO.accessM(_.graphinity.areAllReady(vertClasses))
-
-  private[core] final def cleanAllStates: ZIO[GraphinityEnv, Nothing, Unit] =
-    ZIO.accessM(_.graphinity.cleanAllStates)
+  private[core] final def makeAsReady(vertexCl: VertexClass): ZIO[Graphinity, GraphinityError, Boolean] =
+    ZIO.accessM(_.get.makeAsReady(vertexCl))
 
   //utils
   private[core] final def toCTag(vertexCl: VertexClass): VertexCTag = ClassTag(vertexCl)
 
   private[core] final implicit def scalaDuration2zioDuration(fd: FiniteDuration): Duration = Duration.fromScala(fd)
-
-  private[core] final def setFinalStaticField(field: Field, newValue: Object): Unit =
-    setFinalStaticField(null, field, newValue)
-
-  private[core] final def setFinalStaticField(
-      instance: Object,
-      field: Field,
-      newValue: Object
-    ): Unit = {
-    field.setAccessible(true)
-
-    val modifiersField = classOf[Field].getDeclaredField("modifiers");
-    modifiersField.setAccessible(true);
-    modifiersField.set(field, field.getModifiers() & ~Modifier.FINAL);
-
-    field.set(instance, newValue)
-  }
-
-  private[core] final def mkField[T: ClassTag](name: String): Field =
-    classTag[T].runtimeClass.getDeclaredField(name)
 }
