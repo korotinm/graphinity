@@ -1,6 +1,12 @@
 package graphinity
 
 import graphinity.core.Graphinity.Graphinity
+import graphinity.core.Graphinity.Service
+import graphinity.core.GraphinityLive.GraphinityState
+import graphinity.core.GraphinityLive.VertexState
+import zio.Has
+import zio.Ref
+import zio.ZLayer
 import zio.ZIO
 import zio.clock.Clock
 import zio.console.Console
@@ -15,7 +21,32 @@ package object core {
   type VertexCTag = ClassTag[_ <: OfVertex]
   type VertexHK[F[_]] = F[OfVertex]
 
-  type GraphinityEnv = Clock with Console with Graphinity /* with VertexModule*/
+  type GraphinityEnv = Clock with Console with Graphinity
+
+  /**
+   * layers composition
+   */
+  def graphinityEnvLayer: ZLayer[Any, Nothing, GraphinityEnv] = {
+    lazy val compositionLayer: ZLayer[Any, Nothing, Has[(Ref[GraphinityState], Ref[Set[VertexClass]])]] =
+      ZLayer.fromEffect(
+        for {
+          stateRef <- Ref.make(GraphinityState(meta = Map.empty[VertexCTag, VertexState]))
+          allVertexRef <- Ref.make(Set.empty[VertexClass])
+        } yield (stateRef, allVertexRef)
+      )
+
+    //vertical composition: ROut of layer1 put into RIn of layer2 - allowing injection
+    lazy val graphinityLive: ZLayer[Any, Nothing, Has[Service]] = compositionLayer >>> Graphinity.live
+
+    //horizontal composition console ++ clock ++ graphinity
+    graphinityLive.map(live => Has.allOf(Console.Service.live, Clock.Service.live) ++ live)
+  }
+
+  /**
+   * @return true if all of clients and their links are ready
+   */
+  final def allReady: ZIO[Graphinity, Nothing, Boolean] =
+    ZIO.accessM(_.get.allReady)
 
   /**
    * Add subtype of Vertex for further control
@@ -23,14 +54,8 @@ package object core {
    * @param vertex
    * @return
    */
-  final def addVertex(vertex: Vertex): ZIO[Graphinity, Nothing, Unit] =
+  private[core] final def addVertex(vertex: Vertex): ZIO[Graphinity, Nothing, Unit] =
     ZIO.accessM(_.get.addVertexCl(vertex.vertexCl))
-
-  /**
-   * @return true if all of clients and their links are ready
-   */
-  final def allReady: ZIO[Graphinity, Nothing, Boolean] =
-    ZIO.accessM(_.get.allReady)
 
   private[core] final def _isReady(vertClass: VertexClass): ZIO[Graphinity, Nothing, Boolean] =
     ZIO.accessM(_.get.isReady(vertClass))
