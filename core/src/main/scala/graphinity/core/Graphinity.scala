@@ -9,7 +9,9 @@ import zio.IO
 import zio.Ref
 import zio.Task
 import zio.UIO
+import zio.URLayer
 import zio.ZIO
+import zio.ZLayer
 
 object Graphinity {
 
@@ -30,6 +32,12 @@ object Graphinity {
   }
 
   trait Live extends GraphinityDefault
+
+  val live: URLayer[Has[(Ref[GraphinityState], Ref[Set[VertexClass]])], Has[Service]] =
+    ZLayer.fromService[(Ref[GraphinityState], Ref[Set[VertexClass]]), Service] {
+      case (stateRef, allVertexRef) =>
+        new GraphinityLive(stateRef, allVertexRef)
+    }
 }
 
 class GraphinityLive(val stateRef: Ref[GraphinityState], allVertexRef: Ref[Set[VertexClass]])

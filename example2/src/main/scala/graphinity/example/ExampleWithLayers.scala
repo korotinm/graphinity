@@ -5,7 +5,6 @@ import graphinity.example.clients.AClient
 import graphinity.example.clients.BClient
 import graphinity.example.clients.CClient
 import graphinity.example.clients.DClient
-import graphinity.example.runtime.GraphinityRuntime
 import zio.IO
 import zio.Schedule
 import zio.Task
@@ -13,10 +12,10 @@ import zio.ZIO
 import zio.console._
 import zio.duration._
 
-object Example extends GraphinityRuntime {
+object ExampleWithLayers extends zio.App {
 
-  def run(args: List[String]): ZIO[GraphinityEnv, Nothing, Int] =
-    (for {
+  def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = {
+    val program = (for {
       //instantiation of clients
       cClient <- IO.effectTotal(new CClient)
       bClient <- IO.effectTotal(new BClient(cClient))
@@ -24,14 +23,9 @@ object Example extends GraphinityRuntime {
       dClient <- IO.effectTotal(new DClient)
 
       //[!!! Important steps:
-
-      //1) registration all of instances for give ability to readiness check
+      //the beginning of each instance initialization
       clients <- Task.succeed(List(dClient, cClient, bClient, aClient))
-      _ <- ZIO.foreach(clients)(v => addVertex(v))
-
-      //2) the beginning of each instance initialization
       initFiber <- ZIO.foreachPar(clients)(_.startInit).fork
-
       //!!!]
 
       //monitoring #1
@@ -44,25 +38,14 @@ object Example extends GraphinityRuntime {
       _ <- allReadyMonitoring.join
       _ <- isReadyMonitoring.join
     } yield ())
-      .provide(environment)
-      .foldCause(_ => 1, _ => 0)
 
-  def main(args: Array[String]): Unit =
-    try sys.exit(
-      unsafeRun(
-        for {
-          fiber <- run(args.toList).fork
-          _ <- IO.effectTotal(java.lang.Runtime.getRuntime.addShutdownHook(new Thread {
-
-            override def run() = {
-              val _ = unsafeRunSync(fiber.interrupt)
-            }
-          }))
-          result <- fiber.join
-        } yield result
+    program
+      .provideCustomLayer(graphinityEnvLayer)
+      .foldM(
+        err => putStrLn(s"Something went wrong: ${err.message}") *> ZIO.succeed(1),
+        _ => ZIO.succeed(0)
       )
-    )
-    catch { case _: SecurityException => }
+  }
 
   //monitoring while one of clients is not ready
   private def whileOneOfClientsNotReady(clients: List[Vertex]) =

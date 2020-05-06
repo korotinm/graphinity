@@ -9,12 +9,6 @@ import zio.ZManaged
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration._
 
-/**
- * {{{
- * Type for legacy code.
- * Not supported IO result for almost all methods
- * }}}
- */
 trait Vertex { self =>
 
   val vertexCl: VertexClass = self.getClass
@@ -69,6 +63,7 @@ trait Vertex { self =>
       .flatMap(regProcess)
 
     for {
+      _ <- addVertex(self)
       _ <- regStep
       _ <- tryMakeReady(vertexCl)
     } yield ()
