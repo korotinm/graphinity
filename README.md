@@ -4,9 +4,7 @@
 
 ## Run application
 
-`sbt exampleJVM/run` - example with runtime
-
-`sbt example2JVM/run` - example with layers; program is running under zio.App
+`sbt exampleJVM/run`
 
 ## Description
 
