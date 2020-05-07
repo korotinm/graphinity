@@ -31,7 +31,7 @@ trait Vertex { self =>
   /**
    * the field used as interval for trying to make as ready
    */
-  protected def tryMakeReadyInterval = FiniteDuration(1, SECONDS)
+  protected def tryMakeReadyInterval: FiniteDuration = FiniteDuration(1, SECONDS)
 
   /**
    * {{{

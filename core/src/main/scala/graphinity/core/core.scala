@@ -26,7 +26,7 @@ package object core {
   /**
    * layers composition
    */
-  def graphinityEnvLayer: ZLayer[Any, Nothing, GraphinityEnv] = {
+  val graphinityEnvLayer: ZLayer[Any, Nothing, GraphinityEnv] = {
     lazy val compositionLayer: ZLayer[Any, Nothing, Has[(Ref[GraphinityState], Ref[Set[VertexClass]])]] =
       ZLayer.fromEffect(
         for {
@@ -51,10 +51,10 @@ package object core {
   /**
    * Add subtype of Vertex for further control
    *
-   * @param vertex
+   * @param vertex an instance of Vertex type
    * @return
    */
-  private[core] final def addVertex(vertex: Vertex): ZIO[Graphinity, Nothing, Unit] =
+  private[core] final def addVertex(vertex: OfVertex): ZIO[Graphinity, Nothing, Unit] =
     ZIO.accessM(_.get.addVertexCl(vertex.vertexCl))
 
   private[core] final def _isReady(vertClass: VertexClass): ZIO[Graphinity, Nothing, Boolean] =
@@ -71,5 +71,5 @@ package object core {
   //utils
   private[core] final def toCTag(vertexCl: VertexClass): VertexCTag = ClassTag(vertexCl)
 
-  private[core] final implicit def scalaDuration2zioDuration(fd: FiniteDuration): Duration = Duration.fromScala(fd)
+  private[core] final implicit def sDuration2zDuration(fd: FiniteDuration): Duration = Duration.fromScala(fd)
 }

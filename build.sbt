@@ -114,9 +114,6 @@ lazy val commonSettings = Seq(
     Resolver.sonatypeRepo("releases"),
     Resolver.sonatypeRepo("snapshots")
   ),
-  libraryDependencies ++= Seq(
-    "dev.zio" %% "zio" % devZioV
-  ),
   scmInfo := None
 ) ++ crossVersionSharedSources
 
@@ -124,10 +121,9 @@ lazy val coreSettings = buildSettings ++ commonSettings ++ publishSettings
 
 lazy val root = project
   .in(file("."))
-  .aggregate(coreJVM, exampleJVM, example2JVM)
+  .aggregate(coreJVM, exampleJVM)
   .dependsOn(coreJVM)
   .dependsOn(exampleJVM)
-  .dependsOn(example2JVM)
   .settings(coreSettings: _*)
   .settings(noPublishSettings)
 
@@ -136,6 +132,11 @@ lazy val core =
     .crossType(CrossType.Pure)
     .settings(moduleName := "graphinity")
     .settings(coreSettings: _*)
+    .settings(
+      libraryDependencies ++= Seq(
+        "dev.zio" %% "zio" % devZioV
+      )
+    )
     .jvmSettings(commonJvmSettings: _*)
 
 lazy val coreJVM = core.jvm
@@ -149,16 +150,6 @@ lazy val example =
     .jvmSettings(commonJvmSettings: _*)
 
 lazy val exampleJVM = example.jvm
-
-lazy val example2 =
-  crossProject(JVMPlatform)
-    .crossType(CrossType.Pure)
-    .dependsOn(core)
-    .settings(moduleName := "example2")
-    .settings(coreSettings: _*)
-    .jvmSettings(commonJvmSettings: _*)
-
-lazy val example2JVM = example2.jvm
 
 /*[helpers */
 def isSnapshotVersion(versionValue: String): Boolean = versionValue.trim.toUpperCase.endsWith("SNAPSHOT")

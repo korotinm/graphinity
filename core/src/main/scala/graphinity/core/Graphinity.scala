@@ -202,7 +202,7 @@ object GraphinityLive {
     @inline private def add(vCt: VertexCTag, vInst: OfVertex): GraphinityState =
       self.copy(
         meta = self.meta + (vCt -> VertexState(instance = vInst,
-                                               relations = vInst.relatesWith.map(cl => toCTag(cl)).toSet,
+                                               relations = vInst.relatesWith.map(cl => toCTag(cl)),
                                                isReady = false))
       )
   }
@@ -236,23 +236,22 @@ object GraphinityLive {
   final case class InstanceExists(existsVertex: OfVertex) extends StateErr {
     override lazy val message: String = toString()
 
-    override def toString(): String =
+    override def toString: String =
       s"""
       |Warning! Instance already exists
       |Details about state:
-      | - Info about exists vertex: "${existsVertex.toString()}";
+      | - Info about exists vertex: "${existsVertex.toString}";
       |""".stripMargin
   }
 
   final case class InstanceNonDefined(vertexCt: VertexCTag) extends StateErr {
     override lazy val message: String = toString()
 
-    override def toString(): String =
+    override def toString: String =
       s"""
       |Warning! Instance of vertex not defined
       |Details about state:
-      | - An attempt to register not defined vertex was detected: runtimeClass["${vertexCt.runtimeClass
-           .getName()}"];
+      | - An attempt to register not defined vertex was detected: runtimeClass["${vertexCt.runtimeClass.getName}"];
       | - Reasons for not defined vertex:
       |     timeout(increase "timeout" to avoid its), error happened during in initialization]
       |""".stripMargin
@@ -261,11 +260,11 @@ object GraphinityLive {
   final case class RefersToItself(vertexCt: VertexCTag) extends StateErr {
     override lazy val message: String = toString()
 
-    override def toString(): String =
+    override def toString: String =
       s"""
       |Warning! The vertex refers to iself
       |Details about state:
-      | - Info about vertex: runtimeClass["${vertexCt.runtimeClass.getName()}"]
+      | - Info about vertex: runtimeClass["${vertexCt.runtimeClass.getName}"]
       |""".stripMargin
   }
   /* status]*/

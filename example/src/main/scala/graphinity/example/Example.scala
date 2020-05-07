@@ -12,10 +12,10 @@ import zio.ZIO
 import zio.console._
 import zio.duration._
 
-object ExampleWithLayers extends zio.App {
+object Example extends zio.App {
 
   def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = {
-    val program = (for {
+    val program = for {
       //instantiation of clients
       cClient <- IO.effectTotal(new CClient)
       bClient <- IO.effectTotal(new BClient(cClient))
@@ -37,7 +37,7 @@ object ExampleWithLayers extends zio.App {
       _ <- initFiber.join
       _ <- allReadyMonitoring.join
       _ <- isReadyMonitoring.join
-    } yield ())
+    } yield ()
 
     program
       .provideCustomLayer(graphinityEnvLayer)
