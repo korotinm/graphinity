@@ -16,7 +16,7 @@ Imagine that several parts of application cannot be initialized for several seco
 - At the same time some HTTP - controller accesses the service `BService` across `BClient`.
 - But `BClient` is not ready to provide an interface for HTTP - controller due to the unavailability of client `CClient`.
 
-**Graphinity** allow you ability to set relationships between clients and provide functionality to other components of the microservice such as HTTP - controllers.
+**Graphinity** allow you ability to set relationships between clients and provide functionality to other components of the microservice such as for example HTTP - controllers.
 
 ## Short example with using **graphinity** interface:
 
