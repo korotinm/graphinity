@@ -27,7 +27,7 @@ package object core {
    * layers composition
    */
   val graphinityEnvLayer: ZLayer[Any, Nothing, GraphinityEnv] = {
-    lazy val compositionLayer: ZLayer[Any, Nothing, Has[(Ref[GraphinityState], Ref[Set[VertexClass]])]] =
+    val compositionLayer: ZLayer[Any, Nothing, Has[(Ref[GraphinityState], Ref[Set[VertexClass]])]] =
       ZLayer.fromEffect(
         for {
           stateRef <- Ref.make(GraphinityState(meta = Map.empty[VertexCTag, VertexState]))
@@ -36,7 +36,7 @@ package object core {
       )
 
     //vertical composition: ROut of layer1 put into RIn of layer2 - allowing injection
-    lazy val graphinityLive: ZLayer[Any, Nothing, Has[Service]] = compositionLayer >>> Graphinity.live
+    val graphinityLive: ZLayer[Any, Nothing, Has[Service]] = compositionLayer >>> Graphinity.live
 
     //horizontal composition console ++ clock ++ graphinity
     graphinityLive.map(live => Has.allOf(Console.Service.live, Clock.Service.live) ++ live)
