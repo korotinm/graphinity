@@ -21,7 +21,7 @@ Imagine that several parts of application cannot be initialized for several seco
 ## Short example with using **graphinity** interface:
 
 `BClient` depends on `CClient`.</br>
-Until `CClient` is ready - status of `BClient` is *not ready*</br>
+Until `CClient` readiness - status of `BClient` is *not ready*</br>
 And each component of the microservice can check it by using the methods:
 
 - instanceOfBClient.isReady
