@@ -27,7 +27,7 @@ And each component of the microservice can check it by using the methods:
 - instanceOfBClient.isReady
 - allReady
 
-```
+```scala
 class BClient extends Vertex {
   ...        
   override val relatesWith = Set(classOf[CClient])
@@ -36,7 +36,7 @@ class BClient extends Vertex {
 }
 ```
 
-```
+```scala
 class CClient extends Vertex {
   ...        
   override val relatesWith = Set.empty
@@ -51,7 +51,7 @@ class CClient extends Vertex {
 
 If `BClient` and `CClient` depend on each other then an error will occur.
 
-```
+```scala
 class BClient extends Vertex {
   ...        
   override val relatesWith = Set(classOf[CClient])
@@ -60,7 +60,7 @@ class BClient extends Vertex {
 }
 ```
 
-```
+```scala
 class CClient extends Vertex {
   ...        
   override val relatesWith = Set(classOf[BClient])
