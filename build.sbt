@@ -7,7 +7,7 @@ val devZioV: String = "1.0.0-RC18-2"
 
 lazy val buildSettings = Seq(
   organization := "org.me",
-  scalaVersion := "2.13.1",
+  scalaVersion := "2.13.2",
   crossScalaVersions := Seq("2.11.12", "2.12.10", scalaVersion.value)
 )
 
