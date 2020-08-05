@@ -1,10 +1,11 @@
 package graphinity.example.clients
 
-import graphinity.core.Vertex
-import scala.concurrent.duration._
 import graphinity.core.InitVertexErr
-import graphinity.core.InitError
 import graphinity.core.OfVertex
+import graphinity.core.Vertex
+import graphinity.core.VertexClass
+
+import scala.concurrent.duration._
 
 class DClient extends Vertex {
   private var count: Int = 1
@@ -13,7 +14,7 @@ class DClient extends Vertex {
   override val initInterval: FiniteDuration = 1 seconds
 
   //the client is independent of other clients
-  override val relatesWith = Set.empty
+  override val relatesWith: Set[VertexClass] = Set.empty
 
   /**
    * {{{

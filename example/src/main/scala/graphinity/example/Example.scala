@@ -5,16 +5,18 @@ import graphinity.example.clients.AClient
 import graphinity.example.clients.BClient
 import graphinity.example.clients.CClient
 import graphinity.example.clients.DClient
+import zio.ExitCode
 import zio.IO
 import zio.Schedule
 import zio.Task
+import zio.URIO
 import zio.ZIO
 import zio.console._
 import zio.duration._
 
 object Example extends zio.App {
 
-  def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = {
+  def run(args: List[String]): URIO[zio.ZEnv, ExitCode] = {
     val program = for {
       //instantiation of clients
       cClient <- IO.effectTotal(new CClient)
@@ -42,8 +44,8 @@ object Example extends zio.App {
     program
       .provideCustomLayer(graphinityEnvLayer)
       .foldM(
-        err => putStrLn(s"Something went wrong: ${err.message}") *> ZIO.succeed(1),
-        _ => ZIO.succeed(0)
+        err => putStrLn(s"Something went wrong: ${err.message}") *> ZIO.succeed(ExitCode.failure),
+        _ => ZIO.succeed(ExitCode.success)
       )
   }
 
