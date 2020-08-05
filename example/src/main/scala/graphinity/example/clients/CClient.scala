@@ -4,6 +4,8 @@ import graphinity.core.Vertex
 import graphinity.core.InitVertexErr
 import graphinity.core.OfVertex
 import graphinity.core.InitError
+import graphinity.core.VertexClass
+
 import scala.concurrent.duration._
 
 class CClient extends Vertex {
@@ -13,7 +15,7 @@ class CClient extends Vertex {
   override val initInterval: FiniteDuration = 1 seconds
 
   //the client is independent of other clients
-  override val relatesWith = Set.empty
+  override val relatesWith: Set[VertexClass] = Set.empty
 
   /**
    *{{{
